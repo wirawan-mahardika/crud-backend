@@ -1,8 +1,8 @@
 import { DataTypes } from "sequelize";
-import { animesDB } from "../db.js";
+import database from "../db.js";
 
-const ANIMES = animesDB.define(
-  "animes",
+const USERS = database.define(
+  "users",
   {
     id: {
       type: DataTypes.UUID,
@@ -10,25 +10,23 @@ const ANIMES = animesDB.define(
       allowNull: false,
       primaryKey: true,
     },
-    title: {
-      type: DataTypes.STRING(100),
+    email: {
+      type: DataTypes.STRING,
+      unique: true,
       allowNull: false,
     },
-    poster: {
+    fullname: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    sinopsis: {
-      type: DataTypes.TEXT,
+    username: {
+      type: DataTypes.STRING,
+      unique: true,
       allowNull: false,
     },
-    rating: {
-      type: DataTypes.STRING(10),
-      allowNull: true,
-    },
-    season: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {
@@ -37,4 +35,4 @@ const ANIMES = animesDB.define(
   }
 );
 
-export default ANIMES
+export default USERS;
