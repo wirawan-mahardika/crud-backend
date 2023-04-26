@@ -8,6 +8,11 @@
     "test": "jest",
     "dev": "nodemon server.js"
   },
+  "jest": {
+    "transform": {
+      "^.+\\.[t|j]sx?$": "babel-jest"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/wirawan-mahardika/crud-backend.git"
