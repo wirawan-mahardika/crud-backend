@@ -5,8 +5,13 @@ const router = express.Router();
 
 router.route("/")
   .get(async (req, res) => {
-    const animes = await ANIMES.findAll();
-    return res.status(200).json(animes);
+    try {
+      const animes = await ANIMES.findAll();
+      return res.status(200).json({status: 'success',code: 200, message: 'OK', data: animes});
+    } catch (error) {
+      console.log(error)
+      return res.status(403).json({status: "failed", code: 403, message: "cannot get all data", description: "terjadi kesalahan, coba lagi nanti"})
+    }
   })
   .post(async (req, res) => {
     try {
@@ -14,7 +19,7 @@ router.route("/")
       return res.status(200).json({status: "success", code: 200, message: "berhasil menyimpan data"});
     } catch (error) {
       console.log(error);
-      return res.status(403).json({ status: "failed", code: 403, message: error.message.V });
+      return res.status(403).json({ status: "failed", code: 403, message: 'gagal menyimpan data', description: "terjadi kesalahan, coba lagi nanti" });
     }
   })
   .put(async(req,res) => {
@@ -24,7 +29,7 @@ router.route("/")
       return res.status(200).json({status: "success", code: 200, message: "berhasil mengupdate data"});
     } catch (error) {
       console.log(error)
-      return res.status(403).json({status: "failed", code: 403, message: "gagal mengupdate data"});
+      return res.status(403).json({status: "failed", code: 403, message: "gagal mengupdate data", description: "terjadi kesalahan, coba lagi nanti"});
     }
   })
 
@@ -35,7 +40,7 @@ router.delete('/:animeId', async (req,res) => {
     return res.status(200).json({status: "success", code: 200, message: "berhasil melakukan delete anime"})
   } catch (error) {
     console.log(error)    
-    return res.status(403).json({status: "failed", code: 403, message: "gagal melakukan delete"})
+    return res.status(403).json({status: "failed", code: 403, message: "gagal melakukan delete", description: "terjadi kesalahan, coba lagi nanti"})
   }
 })
 

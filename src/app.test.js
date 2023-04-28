@@ -1,39 +1,238 @@
-import app from "./app.js";
-import supertest from "supertest";
-import cookieParser from "cookie-parser";
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv'
+import app from "./app.js"
+import supertest from "supertest"
+import ANIMES from "./database/model/animesModel.js"
 
-dotenv.config()
-const req = supertest(app);
+const req  = supertest(app)
+jest.mock('./database/model/animesModel.js') 
+let token = ''
+let refreshToken = ''
 
+describe('Admin Testing', () => {
+  describe('POST /api/admin', () => {
+    const admin = {name: "wirawan",email: "wirawanmahardika10@gmail.com",goal: "technical architect",language: "golang"}
 
-jest.mock('./database/model/animesModel.js')
-describe('Admin testing', () => {
-
-  test('POST /api/admin', async () => {
-    const body = {name: 'wirawan', email: "wirawanmahardika10@gmail.com", goal: 'technical architect',language: "golang"}
-    const res = await req.post('/api/admin').send(body)
+    test('success', async () => {
+      const res = await req.post('/api/admin').send(admin)
+      
+      token = (res.headers['set-cookie'].find(item => item.includes('token'))).split(';')[0]
+      refreshToken = (res.headers['set-cookie'].find(item => item.includes('refreshToken'))).split(';')[0]
+      
+      expect(token).toBeDefined()
+      expect(refreshToken).toBeDefined()
+      expect(res.body).toEqual({code: 200, message: "Welcome admin"})
+      expect(res.status).toBe(200)
+    })
     
-    const token = res.headers['set-cookie'].find(child => child.includes('token'))
-    const refreshToken = res.headers['set-cookie'].find(child => child.includes('refreshToken'))
     
-    expect(token).toBeDefined()
-    expect(refreshToken).toBeDefined()
-    expect(res.body).toEqual({code: 200, message: "Welcome admin"})
-    expect(res.get('content-type')).toContain('application/json')
-    expect(res.status).toBe(200)
+    test('error', async () => {
+      const res = await req.post('/api/admin').send(!admin)
+      
+      expect(res.status).toBe(401)
+      expect(res.body).toEqual({code: 401, message: "Anda tidak teridentifikasi sebagai admin"})
+    })
+    
   })
-  
-  test('GET /api/admin/refreshToken', async () => {
-    const body = {name: 'wirawan', email: "wirawanmahardika10@gmail.com", goal: 'technical architect',language: "golang"}
-    const res1 = await req.post('/api/admin').send(body)
 
-    let refreshToken = res1.headers['set-cookie'].find(child => child.includes('refreshToken'))
-    refreshToken = refreshToken.split(";")[0]
-    const res = await req.get('/api/admin/refreshToken').set('Cookie', refreshToken)
-    expect(res.status).toBe(200)
+  
+  describe('GET /api/admin/refreshToken', () => {
+    test('success', async () => {
+      const res = await req.get('/api/admin/refreshToken').set('Cookie', refreshToken)
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({code: 200, message: "berhasil perbarui"})
+      expect(res.get('Set-Cookie').find(cookie => cookie.includes('token'))).toBeDefined()
+    })
+    
+    
+    test('error',async () => {
+      const res = await req.get('/api/admin/refreshToken').set('Cookie', 'refreshToken=null;')
+      expect(res.status).toBe(401)
+      expect(res.body).toHaveProperty('message')
+      expect(res.body).toHaveProperty('code', 401)
+    })
+    
   })
   
 })
 
+
+describe('Animes Testing', () => {
+  
+  describe('GET /api/animes', () => {
+    
+    test('success', async () => {
+      ANIMES.findAll.mockResolvedValueOnce(allAnimes)
+      const res = await req.get('/api/animes')
+        .set('Cookie', token)
+      expect(res.status).toBe(200)
+      expect(res.get('content-type')).toContain('application/json')
+      expect(res.body).toEqual({status: 'success',code: 200, message: 'OK', data: allAnimes})
+    })
+
+    test('error (jwt)', async () => {
+      const rejectValue = {message: "error"}
+      ANIMES.findAll.mockImplementationOnce(() => Promise.resolve(rejectValue))
+      const res = await req.get('/api/animes')
+      expect(res.status).toBe(401)
+      expect(res.body).toHaveProperty('code', 401)
+      expect(res.body).toHaveProperty('message')
+    })
+    
+    test('error', async () => {
+      const rejectValue = {message: "error"}
+      jest.spyOn(ANIMES, 'findAll').mockRejectedValue(new Error(rejectValue))
+      try {
+        await ANIMES.findAll()
+      } catch (error) {
+        expect(error.message).toBe(rejectValue)
+      }
+    })
+    
+    
+  })
+
+  
+  describe('POST /api/animes', () => {
+    const newAnime = {
+      id: '1324',
+      title: "anime3",
+      poster: "anime3.poster.io",
+      genre: "romance, comedy",
+    }
+    test('success', async () => {
+      ANIMES.create.mockResolvedValueOnce(newAnime)
+      const res = await req.post('/api/animes').set('Cookie', token).send(newAnime)
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({status: "success", code: 200, message: "berhasil menyimpan data"})
+    })
+
+    test('error (jwt)', async () => {
+      const rejectValue = {message: "berhasil login"}
+      ANIMES.findAll.mockImplementationOnce(() => Promise.resolve(rejectValue))
+      const res = await req.post('/api/animes')
+      expect(res.status).toBe(401)
+      expect(res.body).toHaveProperty('code', 401)
+      expect(res.body).toHaveProperty('message')
+    })
+
+    
+    test('error', async () => {
+      const rejectValue = 'tidak berhasil membuat data anime baru'
+      jest.spyOn(ANIMES, 'create').mockRejectedValueOnce(new Error(rejectValue))
+      try {
+        await ANIMES.create(newAnime)
+      } catch (error) {
+        expect(error.message).toBe(rejectValue)
+      }
+    })
+    
+    
+  })
+  
+  
+  describe('PUT /api/animes', () => {
+    
+    test('success', async () => {
+      ANIMES.update.mockImplementationOnce(() => {
+        return {title: "updated anime title", lain_lain: '...alldata'}
+      })
+      const res = await req.put('/api/animes').set('Cookie', token).send({title: "anime title"})
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({status: "success", code: 200, message: "berhasil mengupdate data"})
+    })
+    
+
+    test('error (body empty)', async () => {
+      ANIMES.update.mockImplementationOnce(() => true)
+      const res = await req.put('/api/animes').set('Cookie', token)
+      expect(res.status).toBe(403)
+      expect(res.body).toEqual({status: "failed", code: 403, message: "proses query membutuhkan title"})
+    })
+
+    test('error (jwt)', async () => {
+      ANIMES.update.mockImplementationOnce(() => true)
+      const res = await req.put('/api/animes')
+      expect(res.status).toBe(401)
+      expect(res.body).toHaveProperty('message')
+      expect(res.body).toHaveProperty('code', 401)
+    })
+
+    
+    test('error', async () => {
+      const rejectedValue = 'gagal update'
+      jest.spyOn(ANIMES, 'update').mockRejectedValueOnce(new Error(rejectedValue))
+      const res = await req.put('/api/animes').set('Cookie', token).send({title: "anime title"})
+      try {
+        await ANIMES.update()
+      } catch (error) {
+        expect(error.message).toBe(rejectedValue)
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual({status: "failed", code: 403, message: "gagal mengupdate data", description: "terjadi kesalahan, coba lagi nanti"})
+      }
+    })
+    
+    
+  })
+
+  
+  describe('DELETE /api/animes/{animesId}', () => {
+    test('success', async () => {
+      const id = '1234'
+      ANIMES.destroy.mockImplementation(() => {
+        return allAnimes.filter(anime => anime.id !== id)
+      })
+      const res = await req.delete('/api/animes/'+id).set('Cookie', token)
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({status: "success", code: 200, message: "berhasil melakukan delete anime"})
+    })
+
+    
+    test('error (jwt)', async () => {
+      ANIMES.destroy.mockImplementationOnce(() => true)
+      const res = await req.put('/api/animes')
+      expect(res.status).toBe(401)
+      expect(res.body).toHaveProperty('message')
+      expect(res.body).toHaveProperty('code', 401)
+    })
+
+    
+    test('error', async () => {
+      const rejectedValue = 'gagal delete'
+      const id = '1234'
+      jest.spyOn(ANIMES, 'destroy').mockRejectedValueOnce(new Error(rejectedValue))
+      const res = await req.put('/api/animes/'+id).set('Cookie', token)
+      try {
+        await ANIMES.destroy()
+      } catch (error) {
+        expect(error.message).toBe(rejectedValue)
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual({status: "failed", code: 403, message: "gagal melakukan delete", description: "terjadi kesalahan, coba lagi nanti"})
+      }
+    })
+    
+    
+    
+  })
+  
+  
+})
+
+const allAnimes = [
+  {
+    id: '1234',
+    title: "anime1",
+    poster: "anime1.poster.io",
+    genre: "shounen, comedy",
+  },
+  {
+    id: '4321',
+    title: "anime2",
+    poster: "anime2.poster.io",
+    genre: "supranatural, comedy",
+  },
+  {
+    id: '1324',
+    title: "anime3",
+    poster: "anime3.poster.io",
+    genre: "romance, comedy",
+  }
+]

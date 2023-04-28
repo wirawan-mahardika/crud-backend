@@ -22,10 +22,12 @@ router.post('/',(req,res) => {
 
 router.get('/refreshToken', (req,res) => {
     const refreshToken = req.signedCookies['refreshToken']
-    
-    jwt.verify(refreshToken, process.env.REFRESH_JWT_SECRET, (err, {name,email}) => {
+
+    jwt.verify(refreshToken, process.env.REFRESH_JWT_SECRET, (err, admin) => {
         if(err) return res.status(401).json({code: 401, message: err.message})
-        const token = jwt.sign({name, email}, process.env.JWT_SECRET, {expiresIn: '15s'})
+  
+
+        const token = jwt.sign({name: admin.name, email: admin.email}, process.env.JWT_SECRET, {expiresIn: '15s'})
         res.cookie('token', token, {maxAge: 1000*15, signed: true, httpOnly: true})
         return res.status(200).json({code: 200, message: "berhasil perbarui"})
     })
