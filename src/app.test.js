@@ -51,6 +51,26 @@ describe('Admin Testing', () => {
     })
     
   })
+
+  
+  describe('GET /api/admin/auth', () => {
+    
+    test('success', async () => {
+      const res = await req.get('/api/admin/auth').set('Cookie', token)
+      expect(res.status).toBe(200)
+      expect(res.body).toHaveProperty('code', 200)
+      expect(res.body).toHaveProperty('serverData')
+    })
+
+    test('error (jwt)', async () => {
+      const res = await req.get('/api/admin/auth')
+      expect(res.status).toBe(401)
+      expect(res.body).toHaveProperty('code', 401)
+      expect(res.body).toHaveProperty('message')
+    })
+    
+  })
+  
   
 })
 
@@ -62,23 +82,14 @@ describe('Animes Testing', () => {
     test('success', async () => {
       ANIMES.findAll.mockResolvedValueOnce(allAnimes)
       const res = await req.get('/api/animes')
-        .set('Cookie', token)
       expect(res.status).toBe(200)
       expect(res.get('content-type')).toContain('application/json')
       expect(res.body).toEqual({status: 'success',code: 200, message: 'OK', data: allAnimes})
     })
 
-    test('error (jwt)', async () => {
-      const rejectValue = {message: "error"}
-      ANIMES.findAll.mockImplementationOnce(() => Promise.resolve(rejectValue))
-      const res = await req.get('/api/animes')
-      expect(res.status).toBe(401)
-      expect(res.body).toHaveProperty('code', 401)
-      expect(res.body).toHaveProperty('message')
-    })
     
     test('error', async () => {
-      const rejectValue = {message: "error"}
+      const rejectValue = 'cannot get data'
       jest.spyOn(ANIMES, 'findAll').mockRejectedValue(new Error(rejectValue))
       try {
         await ANIMES.findAll()
