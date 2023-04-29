@@ -1,13 +1,14 @@
 import express from "express";
 import ANIMES from "../database/model/animesModel.js";
 import { jwtAuth } from "../app.js";
+import { Op } from "sequelize";
 
 const router = express.Router();
 
 router.route("/")
   .get(async (req, res) => {
     try {
-      const animes = await ANIMES.findAll();
+      const animes = await ANIMES.findAll({limit: 10});
       return res.status(200).json({status: 'success',code: 200, message: 'OK', data: animes});
     } catch (error) {
       console.log(error)
@@ -42,6 +43,21 @@ router.delete('/:animeId', jwtAuth, async (req,res) => {
   } catch (error) {
     console.log(error)    
     return res.status(403).json({status: "failed", code: 403, message: "gagal melakukan delete", description: "terjadi kesalahan, coba lagi nanti"})
+  }
+})
+
+router.get('/search/:title', async (req,res) => {
+  const title = req.params.title
+  try {
+    const datas = await ANIMES.findAll({
+      where: {
+        title: {[Op.substring]: `%${title}%`}
+      }
+    })
+    return res.status(200).json({status: "success", code: 200, message: "hasil query dengan title "+title, animes: datas})
+  } catch (error) {
+    console.log(error)
+    return res.status(403).json({status: "failed", code: 403, message: error.message })
   }
 })
 

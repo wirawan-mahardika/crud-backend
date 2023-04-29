@@ -12,10 +12,10 @@ router.post('/',(req,res) => {
         const refreshToken = jwt.sign({name: name, email: email}, process.env.REFRESH_JWT_SECRET, {expiresIn: '10m'})
 
         res.cookie('token', token, {maxAge: 1000*15, signed: true, httpOnly: true})
-        res.cookie('refreshToken', refreshToken, {maxAge: 1000*3600, signed: true, httpOnly: true})
-        
-        
-        res.status(200).json({code: 200, message: "Welcome admin"})
+        res.cookie('refreshToken', refreshToken, {maxAge: 1000*600, signed: true, httpOnly: true})
+
+        const expireToken = (jwt.decode(token)).exp * 1000
+        res.status(200).json({code: 200, message: "Welcome admin", tokenExp: expireToken})
     } else {
         return res.status(401).json({code: 401, message: "Anda tidak teridentifikasi sebagai admin"})
     }
@@ -28,16 +28,16 @@ router.get('/auth', (req,res) => {
     if(token) {
         jwt.verify(token, process.env.JWT_SECRET, (err, admin) => {
             if(err) return res.status(401).json({code: 401, message: err.message})
-            admin.authenticate = true
+            admin.tokenExp = (jwt.decode(token)).exp * 1000
             return res.status(200).json({code: 200, serverData: admin})
         })
     } else {
         jwt.verify(refreshToken, process.env.REFRESH_JWT_SECRET, (err, admin) => {
             if(err) return res.status(401).json({code: 401, message: err.message})
-      
+
             const token = jwt.sign({name: admin.name, email: admin.email}, process.env.JWT_SECRET, {expiresIn: '15s'})
             res.cookie('token', token, {maxAge: 1000*15, signed: true, httpOnly: true})
-            res.redirect('/api/admin/auth')
+            res.redirect(301, '/api/admin/auth')
         })
     }
 })
