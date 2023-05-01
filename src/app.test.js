@@ -4,8 +4,7 @@ import ANIMES from "./database/model/animesModel.js"
 
 const req  = supertest(app)
 jest.mock('./database/model/animesModel.js') 
-let token = ''
-let refreshToken = ''
+let token, refreshToken
 
 afterAll(() => jest.resetModules())
 
@@ -48,6 +47,7 @@ describe('Admin Testing', () => {
     test('success (redirect)', async () => {
       const res = await req.get('/api/admin/auth').set('Cookie', `${refreshToken}`)
       expect(res.status).toBe(301)
+      expect(res.get('location')).toBe('/api/admin/auth')
       expect(res.get('Set-Cookie').find(cookie => cookie.includes('token'))).toBeTruthy()
     })
 
@@ -267,20 +267,3 @@ const allAnimes = [
     genre: "romance, comedy",
   }
 ]
-// describe('GET /api/admin/refreshToken', () => {
-//   test('success', async () => {
-//     const res = await req.get('/api/admin/refreshToken').set('Cookie', refreshToken)
-//     expect(res.status).toBe(200)
-//     expect(res.body).toEqual({code: 200, message: "berhasil perbarui"})
-//     expect(res.get('Set-Cookie').find(cookie => cookie.includes('token'))).toBeDefined()
-//   })
-  
-  
-//   test('error',async () => {
-//     const res = await req.get('/api/admin/refreshToken').set('Cookie', 'refreshToken=null;')
-//     expect(res.status).toBe(401)
-//     expect(res.body).toHaveProperty('message')
-//     expect(res.body).toHaveProperty('code', 401)
-//   })
-  
-// })

@@ -9,8 +9,9 @@ import cors from 'cors'
 dotenv.config()
 const app = express();
 
+
 export function jwtAuth(req,res,next)  {
-    const token = req.signedCookies['token']
+    const token = req.signedCookies.token
     jwt.verify(token, process.env.JWT_SECRET, (err, admin) => {
         if(err) return res.status(401).json({code: 401, message: err.message})
         req.admin = admin
