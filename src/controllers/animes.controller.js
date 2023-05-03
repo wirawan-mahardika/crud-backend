@@ -35,10 +35,11 @@ export const updateAnimeData = async(req,res) => {
 export const deleteAnimeById = async (req,res) => {
   const animeId = req.params.animeId
   try {
-    await ANIMES.destroy({where: {id: animeId}})
+    const response = await ANIMES.destroy({where: {id: animeId}})
+    console.log(response)
     return res.status(200).json({status: "success", code: 200, message: "berhasil melakukan delete anime"})
   } catch (error) {
-    console.log(error)    
+    console.log(error)
     return res.status(403).json({status: "failed", code: 403, message: "gagal melakukan delete", description: "terjadi kesalahan, coba lagi nanti"})
   }
 }

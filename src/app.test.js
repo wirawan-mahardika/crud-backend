@@ -15,14 +15,13 @@ describe('Admin Testing', () => {
     test('success', async () => {
       const res = await req.post('/api/admin').send(admin)
       
-      token = (res.headers['set-cookie'].find(item => item.includes('token'))).split(';')[0]
       refreshToken = (res.headers['set-cookie'].find(item => item.includes('refreshToken'))).split(';')[0]
       
-      expect(token).toBeDefined()
       expect(refreshToken).toBeDefined()
       expect(res.body).toMatchObject({code: 200, message: "Welcome admin"})
-      expect(res.body).toHaveProperty('tokenExp')
+      expect(res.body).toHaveProperty('dataToken')
       expect(res.status).toBe(200)
+      token = res.body.dataToken.token
     })
     
     
@@ -38,21 +37,13 @@ describe('Admin Testing', () => {
   describe('GET /api/admin/auth', () => {
     
     test('success', async () => {
-      const res = await req.get('/api/admin/auth').set('Cookie', token)
+      const res = await req.get('/api/admin/auth').set('authorization', 'Bearer '+token)
       expect(res.status).toBe(200)
-      expect(res.body).toHaveProperty('code', 200)
-      expect(res.body).toHaveProperty('serverData')
-    })
-    
-    test('success (redirect)', async () => {
-      const res = await req.get('/api/admin/auth').set('Cookie', `${refreshToken}`)
-      expect(res.status).toBe(301)
-      expect(res.get('location')).toBe('/api/admin/auth')
-      expect(res.get('Set-Cookie').find(cookie => cookie.includes('token'))).toBeTruthy()
+      expect(res.body).toEqual({code: 200, message: 'Berhasil login'})
     })
 
     test('error (jwt)', async () => {
-      const res = await req.get('/api/admin/auth')
+      const res = await req.get('/api/admin/auth').set('authorization', 'Bearer salah')
       expect(res.status).toBe(401)
       expect(res.body).toHaveProperty('code', 401)
       expect(res.body).toHaveProperty('message')
@@ -100,15 +91,15 @@ describe('Animes Testing', () => {
     }
     test('success', async () => {
       ANIMES.create.mockResolvedValueOnce(newAnime)
-      const res = await req.post('/api/animes').set('Cookie', token).send(newAnime)
+      const res = await req.post('/api/animes').set('authorization', 'Bearer ' + token).send(newAnime)
       expect(res.status).toBe(200)
       expect(res.body).toEqual({status: "success", code: 200, message: "berhasil menyimpan data"})
     })
 
     test('error (jwt)', async () => {
-      const rejectValue = {message: "berhasil login"}
+      const rejectValue = {message: "gagal login"}
       ANIMES.findAll.mockImplementationOnce(() => Promise.resolve(rejectValue))
-      const res = await req.post('/api/animes')
+      const res = await req.post('/api/animes').set('authorization', 'Bearer invalidtoken')
       expect(res.status).toBe(401)
       expect(res.body).toHaveProperty('code', 401)
       expect(res.body).toHaveProperty('message')
@@ -118,10 +109,14 @@ describe('Animes Testing', () => {
     test('error', async () => {
       const rejectValue = 'tidak berhasil membuat data anime baru'
       jest.spyOn(ANIMES, 'create').mockRejectedValueOnce(new Error(rejectValue))
+      
+      const res = await req.post('/api/animes').set('authorization', 'Bearer ' + token)
       try {
         await ANIMES.create(newAnime)
       } catch (error) {
         expect(error.message).toBe(rejectValue)
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual({ status: "failed", code: 403, message: 'gagal menyimpan data', description: "terjadi kesalahan, coba lagi nanti" })
       }
     })
     
@@ -134,7 +129,7 @@ describe('Animes Testing', () => {
       ANIMES.update.mockImplementationOnce(() => {
         return {title: "updated anime title", lain_lain: '...alldata'}
       })
-      const res = await req.put('/api/animes').set('Cookie', token).send({title: "anime title"})
+      const res = await req.put('/api/animes').set('authorization', 'Bearer '+token).send({title: "anime title"})
       expect(res.status).toBe(200)
       expect(res.body).toEqual({status: "success", code: 200, message: "berhasil mengupdate data"})
     })
@@ -142,14 +137,14 @@ describe('Animes Testing', () => {
     
     test('error (body empty)', async () => {
       ANIMES.update.mockImplementationOnce(() => true)
-      const res = await req.put('/api/animes').set('Cookie', token)
+      const res = await req.put('/api/animes').set('authorization', 'Bearer '+token)
       expect(res.status).toBe(403)
       expect(res.body).toEqual({status: "failed", code: 403, message: "proses query membutuhkan title"})
     })
     
     test('error (jwt)', async () => {
       ANIMES.update.mockImplementationOnce(() => true)
-      const res = await req.put('/api/animes')
+      const res = await req.put('/api/animes').set('authorization', `Bearer invalidtoken`)
       expect(res.status).toBe(401)
       expect(res.body).toHaveProperty('message')
       expect(res.body).toHaveProperty('code', 401)
@@ -173,20 +168,25 @@ describe('Animes Testing', () => {
   })
   
   describe('DELETE /api/animes/{animesId}', () => {
+    const dbDestroyMock = jest.spyOn(ANIMES, 'destroy')
+    beforeEach(() => dbDestroyMock.mockRestore())
+
     test('success', async () => {
       const id = '1234'
-      ANIMES.destroy.mockImplementation(() => {
-        return allAnimes.filter(anime => anime.id !== id)
+      dbDestroyMock.mockImplementationOnce(() => {
+        const animes = allAnimes.filter(anime => anime.id !== id)
+        return animes
       })
-      const res = await req.delete('/api/animes/'+id).set('Cookie', token)
+      const res = await req.delete('/api/animes/'+id).set('authorization', 'Bearer '+token)
       expect(res.status).toBe(200)
       expect(res.body).toEqual({status: "success", code: 200, message: "berhasil melakukan delete anime"})
     })
     
     
     test('error (jwt)', async () => {
+      const id = '1234'
       ANIMES.destroy.mockImplementationOnce(() => true)
-      const res = await req.put('/api/animes')
+      const res = await req.delete('/api/animes/'+id).set('authorization', 'Bearer invalidtoken')
       expect(res.status).toBe(401)
       expect(res.body).toHaveProperty('message')
       expect(res.body).toHaveProperty('code', 401)
@@ -196,8 +196,8 @@ describe('Animes Testing', () => {
     test('error', async () => {
       const rejectedValue = 'gagal delete'
       const id = '1234'
-      jest.spyOn(ANIMES, 'destroy').mockRejectedValueOnce(new Error(rejectedValue))
-      const res = await req.put('/api/animes/'+id).set('Cookie', token)
+      dbDestroyMock.mockRejectedValueOnce(new Error(rejectedValue))
+      const res = await req.delete('/api/animes/'+id).set('authorization', 'Bearer '+token)
       try {
         await ANIMES.destroy()
       } catch (error) {
@@ -206,9 +206,6 @@ describe('Animes Testing', () => {
         expect(res.body).toEqual({status: "failed", code: 403, message: "gagal melakukan delete", description: "terjadi kesalahan, coba lagi nanti"})
       }
     })
-    
-    
-    
     
   })
   
