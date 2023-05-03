@@ -11,7 +11,8 @@ const app = express();
 
 
 export function jwtAuth(req,res,next)  {
-    const token = req.signedCookies.token
+    const token = (req.headers['authorization']).split(" ")[1]
+
     jwt.verify(token, process.env.JWT_SECRET, (err, admin) => {
         if(err) return res.status(401).json({code: 401, message: err.message})
         req.admin = admin
@@ -32,7 +33,7 @@ app.use("/api/animes", animeRoutes);
 
 app.use((err,req,res,next) => {
     if(err) {
-        return res.status(500).json({code: 500, message: "internal server error", error: err})
+        return res.status(500).json({code: 500, message: "internal server error, harap coba lagi nanti"})
     }
 })
 
